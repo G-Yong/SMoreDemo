@@ -19,12 +19,14 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    void loadAndInfer(QString modelPath, int idx);
+    void loadAndInfer(QString modelPath, QString imagePath, int idx);
 
 private slots:
     void on_pushButton_start_clicked();
 
     void on_pushButton_modelPath_clicked();
+
+    void on_pushButton_imagePath_clicked();
 
     void on_pushButton_stop_clicked();
 

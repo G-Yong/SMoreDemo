@@ -23,6 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
     mQuitThread = false;
 
     ui->lineEdit_modelPath->setText("C:/Users/Administrator/Desktop/vimoModel/vcloud/多线程测试/HRZ-好日子-13-model-16-17-19");
+    ui->lineEdit_imagePath->setText("./image.bmp");
 
     // 初始化tableWidget
     ui->tableWidget->setColumnCount(2);
@@ -60,12 +61,14 @@ void MainWindow::on_pushButton_start_clicked()
     for(int i = 0; i < threadCount; i++)
     {
         QtConcurrent::run([&](){
-           loadAndInfer(ui->lineEdit_modelPath->text(), mThreadIndex++);
+           loadAndInfer(ui->lineEdit_modelPath->text(), ui->lineEdit_imagePath->text(), mThreadIndex++);
         });
     }
 
     ui->lineEdit_modelPath->setEnabled(false);
     ui->pushButton_modelPath->setEnabled(false);
+    ui->lineEdit_imagePath->setEnabled(false);
+    ui->pushButton_imagePath->setEnabled(false);
     ui->spinBox_threads->setEnabled(false);
     ui->pushButton_start->setEnabled(false);
     ui->pushButton_stop->setEnabled(true);
@@ -77,6 +80,8 @@ void MainWindow::on_pushButton_stop_clicked()
 
     ui->lineEdit_modelPath->setEnabled(true);
     ui->pushButton_modelPath->setEnabled(true);
+    ui->lineEdit_imagePath->setEnabled(true);
+    ui->pushButton_imagePath->setEnabled(true);
     ui->spinBox_threads->setEnabled(true);
     ui->pushButton_start->setEnabled(true);
     ui->pushButton_stop->setEnabled(false);
@@ -94,6 +99,19 @@ void MainWindow::on_pushButton_modelPath_clicked()
     }
 
     ui->lineEdit_modelPath->setText(dir);
+}
+
+void MainWindow::on_pushButton_imagePath_clicked()
+{
+    QString filePath = QFileDialog::getOpenFileName(this, tr("选择图像文件"),
+                                                    ui->lineEdit_imagePath->text(),
+                                                    tr("图像文件 (*.bmp *.jpg *.jpeg *.png *.tif *.tiff);;所有文件 (*.*)"));
+    if(filePath.isEmpty())
+    {
+        return;
+    }
+
+    ui->lineEdit_imagePath->setText(filePath);
 }
 
 void MainWindow::onInferCompleted(int index, double elapsed)
@@ -126,7 +144,7 @@ cv::Mat loadMatFromPath(QString imgPath)
 
     return mat;
 }
-void MainWindow::loadAndInfer(QString modelPath, int idx)
+void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
 {
     // 加载模型并创建pipeline
     vimo::Pipelines pipelines;
@@ -188,12 +206,8 @@ void MainWindow::loadAndInfer(QString modelPath, int idx)
         try
         {
             // 每次只推理一张图片
-            QString image_path = "./image.bmp";         // replace with your image path
-            // std::cout << "create request from image: " << image_path.toStdString() << std::endl;
-            vimo::Request req(loadMatFromPath(image_path));
-
+            vimo::Request req(loadMatFromPath(imagePath));
             vimo::Pipelines::UADResponseList rsp;
-
             pipelines.Run(req, rsp);
         }
         catch (vimo::VimoException &e)
