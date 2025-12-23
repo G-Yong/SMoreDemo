@@ -17,6 +17,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    setWindowTitle("多线程推理耗时测试");
 
     mThreadIndex = 0;
     mQuitThread = false;
@@ -27,13 +28,17 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableWidget->setColumnCount(2);
     ui->tableWidget->setHorizontalHeaderLabels(QStringList() << "线程索引" << "推理耗时(ms)");
     ui->tableWidget->horizontalHeader()->setStretchLastSection(true);
+    ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);  // 禁止编辑
 
     // 连接信号槽（使用Qt::QueuedConnection确保跨线程安全更新UI）
     connect(this, &MainWindow::inferCompleted, this, &MainWindow::onInferCompleted, Qt::QueuedConnection);
+
+    on_pushButton_stop_clicked();
 }
 
 MainWindow::~MainWindow()
 {
+    on_pushButton_stop_clicked();
     delete ui;
 }
 
@@ -58,11 +63,23 @@ void MainWindow::on_pushButton_start_clicked()
            loadAndInfer(ui->lineEdit_modelPath->text(), mThreadIndex++);
         });
     }
+
+    ui->lineEdit_modelPath->setEnabled(false);
+    ui->pushButton_modelPath->setEnabled(false);
+    ui->spinBox_threads->setEnabled(false);
+    ui->pushButton_start->setEnabled(false);
+    ui->pushButton_stop->setEnabled(true);
 }
 
 void MainWindow::on_pushButton_stop_clicked()
 {
     mQuitThread = true;
+
+    ui->lineEdit_modelPath->setEnabled(true);
+    ui->pushButton_modelPath->setEnabled(true);
+    ui->spinBox_threads->setEnabled(true);
+    ui->pushButton_start->setEnabled(true);
+    ui->pushButton_stop->setEnabled(false);
 }
 
 void MainWindow::on_pushButton_modelPath_clicked()
@@ -185,10 +202,10 @@ void MainWindow::loadAndInfer(QString modelPath, int idx)
         }
 
         // 推理耗时
-        int elapsed = timer.elapsed();
-        // qDebug() << "elapse(ms):" << elapsed;
+        qint64 elapsed = timer.nsecsElapsed();
+        // qDebug() << "elapse(ns):" << elapsed;
 
-        emit inferCompleted(idx, elapsed);
+        emit inferCompleted(idx, elapsed / (double)(1e6));
     }
 
     qDebug() << "quit thread" << idx;
