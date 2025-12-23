@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 
+#pragma execution_character_set("utf-8")
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -17,7 +19,24 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+    void loadAndInfer(QString modelPath, int idx);
+
+private slots:
+    void on_pushButton_start_clicked();
+
+    void on_pushButton_modelPath_clicked();
+
+    void on_pushButton_stop_clicked();
+
+    void onInferCompleted(int index, double elapsed);
+
+signals:
+    void inferCompleted(int index, double interval);
+
 private:
     Ui::MainWindow *ui;
+
+    std::atomic<int> mThreadIndex;
+    std::atomic<bool> mQuitThread;
 };
 #endif // MAINWINDOW_H

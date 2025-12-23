@@ -28,3 +28,13 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 # 使用SMore的sdk v3
 INCLUDEPATH += G:\workData\company\SMore\ViMoCloud\sdk_3.14\include
 LIBS +=        G:\workData\company\SMore\ViMoCloud\sdk_3.14\lib\vimo_inference.lib
+
+# opencv
+INCLUDEPATH += D:/Qt/opencv4.4.0/include
+INCLUDEPATH += D:/Qt/opencv4.4.0/include/opencv2
+CONFIG(release, debug|release){
+LIBS += -LD:/Qt/opencv4.4.0/x64/vc15/lib/ -lopencv_world440
+}
+else{
+LIBS += -LD:/Qt/opencv4.4.0/x64/vc15/lib/ -lopencv_world440d
+}
