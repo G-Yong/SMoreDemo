@@ -7,6 +7,7 @@
 #include <QElapsedTimer>
 #include <QDeadlineTimer>
 #include <QFileDialog>
+#include <QDir>
 
 #include "vimo_inference/vimo_inference.h"
 using namespace smartmore;
@@ -24,7 +25,7 @@ MainWindow::MainWindow(QWidget *parent)
     mQuitThread = false;
 
     ui->lineEdit_modelPath->setText("C:/Users/Administrator/Desktop/vimoModel/vcloud/多线程测试/HRZ-好日子-13-model-16-17-19");
-    ui->lineEdit_imagePath->setText("./image.bmp");
+    ui->lineEdit_imagePath->setText("./images");  // 图片文件夹路径
 
     // 初始化tableWidget
     ui->tableWidget->setColumnCount(3);
@@ -141,15 +142,16 @@ void MainWindow::on_pushButton_modelPath_clicked()
 
 void MainWindow::on_pushButton_imagePath_clicked()
 {
-    QString filePath = QFileDialog::getOpenFileName(this, tr("选择图像文件"),
+    QString dir = QFileDialog::getExistingDirectory(this, tr("选择图像文件夹"),
                                                     ui->lineEdit_imagePath->text(),
-                                                    tr("图像文件 (*.bmp *.jpg *.jpeg *.png *.tif *.tiff);;所有文件 (*.*)"));
-    if(filePath.isEmpty())
+                                                    QFileDialog::ShowDirsOnly
+                                                        | QFileDialog::DontResolveSymlinks);
+    if(dir.isEmpty())
     {
         return;
     }
 
-    ui->lineEdit_imagePath->setText(filePath);
+    ui->lineEdit_imagePath->setText(dir);
 }
 
 void MainWindow::onInferCompleted(int index, double elapsed)
@@ -201,7 +203,7 @@ cv::Mat loadMatFromPath(QString imgPath)
 
     return mat;
 }
-void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
+void MainWindow::loadAndInfer(QString modelPath, QString imageFolderPath, int idx)
 {
     // 加载模型并创建pipelines
     vimo::Pipelines pipelines;
@@ -241,20 +243,26 @@ void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
         pipelines = solution.CreatePipelines(theModuleInfo.id, use_gpu, device_id);
     }
 
-    // 加载图片
-    cv::Mat img = loadMatFromPath(imagePath);
-    if(img.empty())
+    // 获取文件夹中的所有图片文件
+    QDir imageDir(imageFolderPath);
+    QStringList filters;
+    filters << "*.bmp" << "*.jpg" << "*.jpeg" << "*.png" << "*.tif" << "*.tiff";
+    QStringList imageFiles = imageDir.entryList(filters, QDir::Files, QDir::Name);
+    
+    if(imageFiles.isEmpty())
     {
-        qDebug() << "图像为空";
+        qDebug() << idx << "文件夹中没有找到图片文件:" << imageFolderPath;
         return;
     }
-
-    qDebug() << idx << "初始化完成，准备推理";
+    
+    qDebug() << idx << "找到" << imageFiles.size() << "张图片，准备推理";
 
     // 目前的工作节拍为600pcs/min，也就是每秒钟需要处理10pcs，也就是两次推理之间的间隔为100ms
     // 推理时间也要算到间隔时间里面，不能说是推理完才开始算间隔时间
     int interval = 100;
     QDeadlineTimer dTimer(interval);
+    
+    int currentImageIndex = 0;
 
     while (mQuitThread == false) {
 
@@ -265,7 +273,19 @@ void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
         }
         // 重新开始计时
         dTimer.setRemainingTime(interval);
-
+        
+        // 获取当前要处理的图片路径
+        QString currentImagePath = imageDir.absoluteFilePath(imageFiles[currentImageIndex]);
+        
+        // 加载图片
+        cv::Mat img = loadMatFromPath(currentImagePath);
+        if(img.empty())
+        {
+            qDebug() << idx << "图像加载失败:" << currentImagePath;
+            // 跳过这张图片，继续下一张
+            currentImageIndex = (currentImageIndex + 1) % imageFiles.size();
+            continue;
+        }
 
         QElapsedTimer timer;
         timer.start();
@@ -285,9 +305,12 @@ void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
         // 推理耗时
         qint64 elapsed = timer.nsecsElapsed();
         double elapsed_ms = elapsed / (double)(1e6);
-        // qDebug() << "elapse(ms):" << elapsed_ms;
+        // qDebug() << idx << "image:" << imageFiles[currentImageIndex] << "elapse(ms):" << elapsed_ms;
 
         emit inferCompleted(idx, elapsed_ms);
+        
+        // 移动到下一张图片（循环）
+        currentImageIndex = (currentImageIndex + 1) % imageFiles.size();
     }
 
     qDebug() << "quit thread" << idx;

@@ -124,18 +124,28 @@ public:
                 if (v > origMax) origMax = v;
             }
             
-            painter->setPen(Qt::black);
             QFont font = painter->font();
             font.setPointSize(8);
             painter->setFont(font);
+            QFontMetrics fm(font);
             
-            // 左上角显示最大值
+            // 左上角显示最大值（带背景）
             QString maxText = QString("max:%1").arg(origMax, 0, 'f', 1);
-            painter->drawText(plotRect.adjusted(2, 0, 0, 0), Qt::AlignTop | Qt::AlignLeft, maxText);
+            QRect maxTextRect = fm.boundingRect(maxText);
+            maxTextRect.moveTo(plotRect.left() + 2, plotRect.top() + 1);
+            maxTextRect.adjust(-2, -1, 4, 2);  // 扩展一点边距
+            painter->fillRect(maxTextRect, QColor(255, 255, 255, 200));  // 半透明白色背景
+            painter->setPen(QColor(220, 20, 60));  // 深红色文字（最大值）
+            painter->drawText(maxTextRect, Qt::AlignCenter, maxText);
             
-            // 左下角显示最小值
+            // 左下角显示最小值（带背景）
             QString minText = QString("min:%1").arg(origMin, 0, 'f', 1);
-            painter->drawText(plotRect.adjusted(2, 0, 0, -2), Qt::AlignBottom | Qt::AlignLeft, minText);
+            QRect minTextRect = fm.boundingRect(minText);
+            minTextRect.moveTo(plotRect.left() + 2, plotRect.bottom() - minTextRect.height() - 1);
+            minTextRect.adjust(-2, -1, 4, 2);  // 扩展一点边距
+            painter->fillRect(minTextRect, QColor(255, 255, 255, 200));  // 半透明白色背景
+            painter->setPen(QColor(0, 100, 0));  // 深绿色文字（最小值）
+            painter->drawText(minTextRect, Qt::AlignCenter, minText);
         }
 
         painter->restore();
