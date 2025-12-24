@@ -287,6 +287,7 @@ void MainWindow::loadAndInfer(QString modelPath, QString imageFolderPath, int id
             continue;
         }
 
+        // 只算推理的耗时
         QElapsedTimer timer;
         timer.start();
 
