@@ -252,6 +252,7 @@ void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
     qDebug() << idx << "初始化完成，准备推理";
 
     // 目前的工作节拍为600pcs/min，也就是每秒钟需要处理10pcs，也就是两次推理之间的间隔为100ms
+    // 推理时间也要算到间隔时间里面，不能说是推理完才开始算间隔时间
     int interval = 100;
     QDeadlineTimer dTimer(interval);
 
