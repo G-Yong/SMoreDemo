@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QThread>
+#include <QVector>
 
 #pragma execution_character_set("utf-8")
 
@@ -43,5 +44,8 @@ private:
     std::atomic<bool> mQuitThread;
 
     QList<QThread*> mThreadList;
+
+    // 每个线程的历史耗时数据（用于绘制曲线）
+    QVector<QVector<double>> mHistoryData;
 };
 #endif // MAINWINDOW_H

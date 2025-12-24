@@ -1,5 +1,6 @@
 ﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "sparklinedelegate.h"
 
 #include <QDebug>
 #include <QtConcurrentRun>
@@ -26,10 +27,14 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lineEdit_imagePath->setText("./image.bmp");
 
     // 初始化tableWidget
-    ui->tableWidget->setColumnCount(2);
-    ui->tableWidget->setHorizontalHeaderLabels(QStringList() << "线程索引" << "推理耗时(ms)");
-    ui->tableWidget->horizontalHeader()->setStretchLastSection(true);
+    ui->tableWidget->setColumnCount(3);
+    ui->tableWidget->setHorizontalHeaderLabels(QStringList() << "线程索引" << "当前耗时(ms)" << "历史趋势");
+    // ui->tableWidget->horizontalHeader()->setStretchLastSection(true);
     ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);  // 禁止编辑
+    
+    // 设置历史趋势列的自定义委托（绘制曲线）
+    ui->tableWidget->setItemDelegateForColumn(2, new SparklineDelegate(this));
+    ui->tableWidget->setColumnWidth(2, 180);  // 设置曲线列宽度
 
     // 连接信号槽（使用Qt::QueuedConnection确保跨线程安全更新UI）
     connect(this, &MainWindow::inferCompleted, this, &MainWindow::onInferCompleted, Qt::QueuedConnection);
@@ -52,10 +57,17 @@ void MainWindow::on_pushButton_start_clicked()
     // 清空表格并根据线程数设置行数
     int threadCount = ui->spinBox_threads->value();
     ui->tableWidget->setRowCount(threadCount);
+    
+    // 初始化历史数据存储
+    mHistoryData.clear();
+    mHistoryData.resize(threadCount);
+    
     for(int i = 0; i < threadCount; i++)
     {
         ui->tableWidget->setItem(i, 0, new QTableWidgetItem(QString::number(i)));
         ui->tableWidget->setItem(i, 1, new QTableWidgetItem("--"));
+        ui->tableWidget->setItem(i, 2, new QTableWidgetItem());  // 曲线列
+        ui->tableWidget->setRowHeight(i, 50);  // 设置行高以显示曲线
     }
 
     // 启动若干个线程
@@ -145,11 +157,30 @@ void MainWindow::onInferCompleted(int index, double elapsed)
     // 更新对应线程的推理耗时
     if(index >= 0 && index < ui->tableWidget->rowCount())
     {
+        // 更新当前耗时显示
         QTableWidgetItem *item = ui->tableWidget->item(index, 1);
         if(item)
         {
             item->setText(QString::number(elapsed, 'f', 2));
         }
+        
+        // 更新历史数据
+        mHistoryData[index].append(elapsed);
+        // 限制历史数据点数
+        while(mHistoryData[index].size() > MAX_HISTORY_POINTS)
+        {
+            mHistoryData[index].removeFirst();
+        }
+        
+        // 更新曲线列的数据（通过UserRole存储）
+        QTableWidgetItem *chartItem = ui->tableWidget->item(index, 2);
+        if(chartItem)
+        {
+            chartItem->setData(Qt::UserRole, QVariant::fromValue(mHistoryData[index]));
+        }
+        
+        // 触发重绘
+        ui->tableWidget->viewport()->update();
     }
 }
 
@@ -252,9 +283,10 @@ void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
 
         // 推理耗时
         qint64 elapsed = timer.nsecsElapsed();
-        // qDebug() << "elapse(ns):" << elapsed;
+        double elapsed_ms = elapsed / (double)(1e6);
+        // qDebug() << "elapse(ms):" << elapsed_ms;
 
-        emit inferCompleted(idx, elapsed / (double)(1e6));
+        emit inferCompleted(idx, elapsed_ms);
     }
 
     qDebug() << "quit thread" << idx;

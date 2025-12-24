@@ -14,7 +14,8 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
-    mainwindow.h
+    mainwindow.h \
+    sparklinedelegate.h
 
 FORMS += \
     mainwindow.ui
