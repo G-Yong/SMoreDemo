@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QThread>
 
 #pragma execution_character_set("utf-8")
 
@@ -40,5 +41,7 @@ private:
 
     std::atomic<int> mThreadIndex;
     std::atomic<bool> mQuitThread;
+
+    QList<QThread*> mThreadList;
 };
 #endif // MAINWINDOW_H

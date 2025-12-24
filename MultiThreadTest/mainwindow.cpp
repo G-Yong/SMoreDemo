@@ -47,6 +47,7 @@ void MainWindow::on_pushButton_start_clicked()
 {
     mQuitThread = false;
     mThreadIndex = 0;
+    mThreadList.clear();
 
     // 清空表格并根据线程数设置行数
     int threadCount = ui->spinBox_threads->value();
@@ -60,9 +61,24 @@ void MainWindow::on_pushButton_start_clicked()
     // 启动若干个线程
     for(int i = 0; i < threadCount; i++)
     {
-        QtConcurrent::run([&](){
-           loadAndInfer(ui->lineEdit_modelPath->text(), ui->lineEdit_imagePath->text(), mThreadIndex++);
-        });
+        auto functor = [&](){
+            loadAndInfer(ui->lineEdit_modelPath->text(), ui->lineEdit_imagePath->text(), mThreadIndex++);
+        };
+
+        switch (1) {
+        case 0:{
+            // 使用QtConcurrent来创建多线程
+            QtConcurrent::run(functor);
+        }break;
+        case 1:{
+            // 使用QThread来创建多线程
+            QThread *thread = QThread::create(functor);
+            mThreadList << thread;
+            thread->start();
+        }break;
+        default:
+            break;
+        }
     }
 
     ui->lineEdit_modelPath->setEnabled(false);
@@ -85,6 +101,16 @@ void MainWindow::on_pushButton_stop_clicked()
     ui->spinBox_threads->setEnabled(true);
     ui->pushButton_start->setEnabled(true);
     ui->pushButton_stop->setEnabled(false);
+
+    foreach (auto thread, mThreadList) {
+        if(thread->isRunning())
+        {
+            thread->wait(3000);
+        }
+        thread->deleteLater();
+    }
+    mThreadList.clear();
+
 }
 
 void MainWindow::on_pushButton_modelPath_clicked()
@@ -154,7 +180,7 @@ void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
         int device_id = 0;                          // GPU device id, ignore if use_gpu == false
 
         vimo::Solution solution;  // create an empty solution
-        std::cout << "load solution from: " << model_path << std::endl;
+        // std::cout << "load solution from: " << model_path << std::endl;
         solution.LoadFromFile(model_path);  // load solution from model.vimosln
 
         // edgeList是一系列std::pair，其中每个std::pair的first为当前节点，second为下一节点
@@ -168,7 +194,7 @@ void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
         auto infoList = solution.GetModuleInfoList();
         if(infoList.size() <= 0)
         {
-            qDebug() << "error 1";
+            qDebug() << "error 1" << "无法从模型中找到有效模组";
             return;
         }
 
@@ -186,7 +212,13 @@ void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
 
     // 加载图片
     cv::Mat img = loadMatFromPath(imagePath);
+    if(img.empty())
+    {
+        qDebug() << "图像为空";
+        return;
+    }
 
+    qDebug() << idx << "初始化完成，准备推理";
 
     // 目前的工作节拍为600pcs/min，也就是每秒钟需要处理10pcs，也就是两次推理之间的间隔为100ms
     int interval = 100;
