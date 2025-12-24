@@ -146,7 +146,7 @@ cv::Mat loadMatFromPath(QString imgPath)
 }
 void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
 {
-    // 加载模型并创建pipeline
+    // 加载模型并创建pipelines
     vimo::Pipelines pipelines;
     {
         std::string model_path = (modelPath + "/model.vimosln").toLocal8Bit().data();
@@ -184,6 +184,9 @@ void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
         pipelines = solution.CreatePipelines(theModuleInfo.id, use_gpu, device_id);
     }
 
+    // 加载图片
+    cv::Mat img = loadMatFromPath(imagePath);
+
 
     // 目前的工作节拍为600pcs/min，也就是每秒钟需要处理10pcs，也就是两次推理之间的间隔为100ms
     int interval = 100;
@@ -206,7 +209,7 @@ void MainWindow::loadAndInfer(QString modelPath, QString imagePath, int idx)
         try
         {
             // 每次只推理一张图片
-            vimo::Request req(loadMatFromPath(imagePath));
+            vimo::Request req(img);
             vimo::Pipelines::UADResponseList rsp;
             pipelines.Run(req, rsp);
         }

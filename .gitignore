@@ -160,6 +160,8 @@ CMakeLists.txt.user*
 
 .uic/
 
-/build*/
-
 *build*/
+
+.qtcreator/
+
+
