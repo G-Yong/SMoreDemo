@@ -2,6 +2,8 @@
 
 #include <QApplication>
 
+#include "SMoreDemo.h"
+
 int main(int argc, char *argv[])
 {
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
@@ -11,6 +13,8 @@ int main(int argc, char *argv[])
 
     MainWindow w;
     w.show();
+
+    // SMoreTest();
 
     return a.exec();
 }

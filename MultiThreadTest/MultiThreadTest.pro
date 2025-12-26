@@ -15,6 +15,7 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
+    SMoreDemo.h \
     mainwindow.h \
     sparklinedelegate.h
 
